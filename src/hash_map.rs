@@ -93,6 +93,7 @@ impl<V: Eq + Clone> HashMap<V> {
 
         if item.key == key && self.state[i] == CellState::Filled {
             self.state[i] = CellState::Deleted;
+            self.count -= 1;
             return Some(&item.value);
         } else {
             let mut index = (i + 1) % self.cap;
@@ -106,6 +107,7 @@ impl<V: Eq + Clone> HashMap<V> {
                 return Option::None;
             } else {
                 self.state[index] = CellState::Deleted;
+                self.count -= 1;
                 return Option::Some(&self.ht[index].value)
             }
         }
@@ -152,9 +154,6 @@ fn init_table<V: Eq + Clone>(capacity: usize) -> Vec<Item<V>> {
 }
 
 fn init_state(capacity: usize) -> Vec<CellState> {
-    // let occupancy_vec_size = if capacity == 0 { 0 } else { (capacity - 1) / 64 + 1 };
-    // vec![0; occupancy_vec_size]
-
     vec![CellState::Empty; capacity]
 }
 
