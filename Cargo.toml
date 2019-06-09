@@ -1,0 +1,7 @@
+[package]
+name = "HashMap"
+version = "0.1.0"
+authors = ["Makich Karagezyan <mak.kar@mail.ru>"]
+edition = "2018"
+
+[dependencies]
