@@ -3,21 +3,26 @@ use std::{
     mem
 };
 
-#[derive(Clone, Debug)]
-pub struct Item<V: Eq + Clone> {
-    key: i32,
-    value: V
+/// An error that may be due to insertion of duplicate key.
+#[derive(Debug)]
+pub struct DupErr {
+    pub key: i32
 }
 
-const DEFAULT_CAPACITY: usize = 16;
+#[derive(Clone, Debug)]
+struct Item<V: Eq + Clone> {
+    key: i32,
+    value: V,
+    state: CellState
+}
+
+/// A hash map implemented with linear probing.
 pub struct HashMap<V: Eq + Clone> {
-    pub ht: Vec<Item<V>>,
-    cap: usize,
-    state: Vec<CellState>,
+    ht: Vec<Item<V>>,
     count: usize
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 enum CellState {
     Empty,
     Filled,
@@ -25,118 +30,228 @@ enum CellState {
 }
 
 impl<V: Eq + Clone> HashMap<V> {
+    /// Creates an empty `HashMap`.
+    /// 
+    /// # Examples
+    ///
+    /// ```
+    /// use mk_collections::HashMap;
+    ///
+    /// let mut map = HashMap::<i32>::new();
+    /// assert_eq!(map.capacity(), 0);
+    /// ```
     pub fn new() -> HashMap<V> {
-       HashMap::with_capacity(DEFAULT_CAPACITY)
+       HashMap::with_capacity(0)
     }
 
+    /// Creates an empty `HashMap` with the specified capacity.
+    /// 
+    /// # Examples
+    ///
+    /// ```
+    /// use mk_collections::HashMap;
+    ///
+    /// let mut map = HashMap::<i32>::with_capacity(10);
+    /// assert_eq!(map.capacity(), 10);
+    /// ```
     pub fn with_capacity(capacity: usize) -> HashMap<V> {
         HashMap { 
             ht: init_table(capacity),
-            cap: capacity,
-            state: init_state(capacity),
             count: 0
         }
     }
 
+    /// Gets capacity 
+    pub fn capacity(&self) -> usize {
+        self.ht.capacity()
+    }
+
+    /// Returns a reference to the value corresponding to the key, or [`None`] if it didn't found in the map.
+    /// 
+    /// # Examples
+    ///
+    /// ```
+    /// use mk_collections::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// assert!(map.insert(3, "a").is_ok());
+    /// assert_eq!(*map.find(3).unwrap(), "a");
+    /// assert!(map.find(4).is_none());
+    /// ```
     pub fn find(&self, key: i32) -> Option<&V> {
-        let i = key as usize % self.cap;
-        let item = &self.ht[i];
-
-        if item.key == key && self.state[i] == CellState::Filled {
-            return Some(&item.value);
+        if let Some(found) = self.find_index(key) {
+            return Some(&self.ht[found].value);
         } else {
-            let mut index = (i + 1) % self.cap;
-            while index != i && 
-                ((self.state[index] == CellState::Filled && self.ht[index].key != key) 
-                    || self.state[index] == CellState::Deleted) {
-                index = (index + 1) % self.cap;
-            }
-
-            if index == i || self.state[index] == CellState::Empty {
-                return Option::None;
-            } else {
-                return Option::Some(&self.ht[index].value)
-            }
+            return None;
         }
     }
 
-    pub fn insert(&mut self, key: i32, value: V) {
-        if self.count == self.cap {
+    /// Inserts a key-value pair into the map.
+    /// 
+    /// If the map already have the key present, it returns error result `DupErr`.
+    /// To modify the value of already present key use the put method.
+    /// 
+    /// # Examples
+    ///
+    /// ```
+    /// use mk_collections::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// assert!(map.insert(3, "a").is_ok());
+    /// assert_eq!(*map.find(3).unwrap(), "a");
+    /// ```
+    pub fn insert(&mut self, key: i32, value: V) -> Result<(), DupErr> {
+        if self.count == self.ht.capacity() {
             self.resize();
         }
 
-        let index = key as usize % self.cap;
+        let res = self.insert_inner(key, value);
+        
+        self.count += 1;
 
-        if self.state[index] == CellState::Filled {
-            let item = &self.ht[index];
-            if item.key == key {
-                panic!("key duplication");
-            } else {
-                let mut index = (index + 1) % self.cap;
-                while self.state[index] == CellState::Filled {
-                    if self.ht[index].key == key {
-                        panic!("key duplication");
-                    }
-                    index = (index + 1) % self.cap;
-                }
+        res
+    }
 
-                self.insert_inner(index, Item { key, value });
-            }
+    /// Returns `true` if the map have this key present, and `false` - otherwise.
+    /// 
+    /// # Examples
+    ///
+    /// ```
+    /// use mk_collections::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// assert!(map.insert(3, "a").is_ok());
+    /// assert!(map.insert(5, "a").is_ok());
+    /// 
+    /// assert!(map.contains_key(3));
+    /// assert!(map.contains_key(5));
+    /// ```
+    pub fn contains_key(&self, key: i32) -> bool {
+        self.find_index(key).is_some()
+    }
+
+    /// Updates the value if key is present in the map or inserts the new key-value pair if it's not.
+    /// If it updates the old value will be returned, otherwise - [`None`].
+    /// 
+    /// # Examples
+    ///
+    /// ```
+    /// use mk_collections::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// assert!(map.insert(3, "a").is_ok());
+    /// assert_eq!(map.put(3, "b").unwrap(), "a");
+    /// ```
+    pub fn put(&mut self, key: i32, value: V) -> Option<V> {
+        if let Some(index) = self.find_index(key) {
+            Some(mem::replace(&mut self.ht[index].value, value))
         } else {
-            self.insert_inner(index, Item { key, value });
+            self.insert(key, value).expect("cannot insert key-value pair");
+            None
         }
     }
 
+    /// Removes a key from the map, returning the value at the key if the key
+    /// was previously in the map.
+    /// 
+    /// # Examples
+    ///
+    /// ```
+    /// use mk_collections::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// assert!(map.insert(3, "a").is_ok());
+    /// 
+    /// assert_eq!(*map.remove(3).unwrap(), "a");
+    /// assert!(map.remove(3).is_none());
+    /// ```
     pub fn remove(&mut self, key: i32) -> Option<&V> {
-        let i = key as usize % self.cap;
+        if let Some(index) = self.find_index(key) {
+            self.ht[index].state = CellState::Deleted;
+            self.count -= 1;
+        
+            return Some(&self.ht[index].value);
+        } else {
+            return None;
+        }
+    }
+
+    fn find_index(&self, key: i32) -> Option<usize> {
+        let i = self.index(key);
         let item = &self.ht[i];
 
-        if item.key == key && self.state[i] == CellState::Filled {
-            self.state[i] = CellState::Deleted;
-            self.count -= 1;
-            return Some(&item.value);
+        if item.key == key && item.state == CellState::Filled {
+            return Some(i);
         } else {
-            let mut index = (i + 1) % self.cap;
-            while index != i && 
-                ((self.state[index] == CellState::Filled && self.ht[index].key != key) 
-                    || self.state[index] == CellState::Deleted) {
-                index = (index + 1) % self.cap;
+            let mut index = self.next_index(i);
+            while index != i && {
+                        let item = &self.ht[index];
+                        ((item.state == CellState::Filled && item.key != key) 
+                            || item.state == CellState::Deleted)
+                    } {
+                index = self.next_index(index);
             }
 
-            if index == i || self.state[index] == CellState::Empty {
+            if index == i || self.ht[index].state == CellState::Empty {
                 return Option::None;
             } else {
-                self.state[index] = CellState::Deleted;
-                self.count -= 1;
-                return Option::Some(&self.ht[index].value)
+                return Option::Some(index)
             }
         }
     }
 
-    fn insert_inner(&mut self, index: usize, item: Item<V>) {
-        self.ht[index] = item;
-        self.state[index] = CellState::Filled;
-        self.count += 1;
+    fn insert_inner(&mut self, key: i32, value: V) -> Result<(), DupErr> {
+        let index = self.index(key);
+
+        if self.ht[index].state == CellState::Filled {
+            let item = &self.ht[index];
+            if item.key == key {
+                return Err(DupErr { key });
+            } else {
+                let mut index = self.next_index(index);
+                while self.ht[index].state == CellState::Filled {
+                    if self.ht[index].key == key {
+                        return Err(DupErr { key });
+                    }
+                    index = self.next_index(index);
+                }
+
+                self.put_to_index(index, key, value);
+            }
+        } else {
+            self.put_to_index(index, key, value);
+        }
+
+        Ok(())
+    }
+
+    fn put_to_index(&mut self, index: usize, key: i32, value: V) {
+        self.ht[index] = Item { key, value, state: CellState::Filled };
     }
 
     fn resize(&mut self) {
         let capacity = 
-            if self.cap == 0 { 1 }
-            else { self.cap * 2 };
+            if self.ht.is_empty() { 1 }
+            else { self.capacity() * 2 };
 
         let ht = init_table(capacity);
-        let state = init_state(capacity);
 
         let mut old_ht = mem::replace(&mut self.ht, ht);
-        let old_state = mem::replace(&mut self.state, state);
-        mem::replace(&mut self.cap, capacity);
 
         for item in old_ht.drain(..)
                     .enumerate()
-                    .filter(|(index, _)| old_state[*index] == CellState::Filled)
+                    .filter(|(_, item)| item.state == CellState::Filled)
                     .map(|(_, item)| item) {
-            self.insert(item.key, item.value);
+            self.insert_inner(item.key, item.value).unwrap();
         }
+    }
+
+    fn index(&self, key: i32) -> usize {
+        key as usize % self.ht.capacity()
+    }
+
+    fn next_index(&self, index: usize) -> usize {
+        (index + 1) % self.ht.capacity()
     }
 } 
 
@@ -150,10 +265,12 @@ fn init_table<V: Eq + Clone>(capacity: usize) -> Vec<Item<V>> {
         Layout::from_size_align(num_bytes, align)
             .expect("Bad layout")) };
 
-    unsafe { Vec::from_raw_parts(ptr as *mut Item<V>, capacity, capacity) }
-}
+    let mut res = unsafe { Vec::from_raw_parts(ptr as *mut Item<V>, capacity, capacity) };
 
-fn init_state(capacity: usize) -> Vec<CellState> {
-    vec![CellState::Empty; capacity]
+    for i in 0..capacity {
+        res[i].state = CellState::Empty;
+    }
+
+    res
 }
 

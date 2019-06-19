@@ -1,5 +1,5 @@
 [package]
-name = "HashMap"
+name = "mk_collections"
 version = "0.1.0"
 authors = ["Makich Karagezyan <mak.kar@mail.ru>"]
 edition = "2018"
