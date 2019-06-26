@@ -220,6 +220,10 @@ impl<V> HashMap<V> {
     }
 
     fn find_index(&self, key: i32) -> Option<usize> {
+        if self.capacity() == 0 {
+            return None;
+        }
+
         let i = self.index(key);
         let item = &self.ht[i];
 
