@@ -4,6 +4,8 @@ use std::{
     mem
 };
 
+use owning_ref::*;
+
 /// An error that may be due to insertion of duplicate key.
 #[derive(Debug)]
 pub struct DupErr {
@@ -17,13 +19,15 @@ struct Item<V> {
     state: CellState
 }
 
-pub struct HashMapWrapper<V> {
+/// Thread-safe HashMap.
+/// A wrapper over the `HashMap<V>`
+pub struct TsHashMap<V> {
     hm: RwLock<HashMap<V>>
 }
 
-impl<V: Eq + Clone> HashMapWrapper<V> {
-    pub fn new() -> HashMapWrapper<V> {
-        HashMapWrapper{
+impl<V: Eq + Clone> TsHashMap<V> {
+    pub fn new() -> TsHashMap<V> {
+        TsHashMap{
             hm: RwLock::new(HashMap::with_capacity(10))
         }
     }
@@ -34,13 +38,15 @@ impl<V: Eq + Clone> HashMapWrapper<V> {
         map.put(key, value)
     }
 
-    pub fn find(&self, key: i32) -> Option<V> {
+    pub fn find<'ret, 'me: 'ret>(&'me self, key: i32) -> Option<RwLockReadGuardRef<'ret, HashMap<V>, V>> {
         let lock = self.hm.read().unwrap();
         
-        let found_res = lock.find(key);
+        if lock.contains_key(key) {
+            let r = RwLockReadGuardRef::new(lock);
 
-        if let Some(v) = found_res {
-            return Some(v.clone());
+            let x = r.map(|m| m.find(key).unwrap());
+        
+            return Some(x);
         } else {
             return None;
         }

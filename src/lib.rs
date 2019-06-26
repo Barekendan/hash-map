@@ -3,6 +3,8 @@ pub mod hash_map;
 
 pub use self::hash_map::HashMap;
 
+extern crate owning_ref;
+
 #[cfg(test)]
 mod tests {
     use super::hash_map::*;
@@ -11,7 +13,7 @@ mod tests {
 
     #[test]
     fn spam_insert() {
-        let m = Arc::new(HashMapWrapper::new());
+        let m = Arc::new(TsHashMap::new());
         let mut joins = Vec::new();
 
         for t in 0..10 {
@@ -32,7 +34,7 @@ mod tests {
             let m = m.clone();
             joins.push(thread::spawn(move || {
                 for i in t * 2000..(t + 1) * 2000 {
-                    assert_eq!(m.find(i).unwrap(), i);
+                    assert_eq!(*m.find(i).unwrap(), i);
                 }
             }));
         }
