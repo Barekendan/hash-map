@@ -28,7 +28,13 @@ pub struct TsHashMap<V> {
 impl<V: Eq + Clone> TsHashMap<V> {
     pub fn new() -> TsHashMap<V> {
         TsHashMap{
-            hm: RwLock::new(HashMap::with_capacity(10))
+            hm: RwLock::new(HashMap::new())
+        }
+    }
+
+    pub fn with_capacity(capacity: usize) -> TsHashMap<V> {
+        TsHashMap {
+            hm: RwLock::new(HashMap::with_capacity(capacity))
         }
     }
 
