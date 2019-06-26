@@ -48,11 +48,9 @@ impl<V: Eq + Clone> TsHashMap<V> {
         let lock = self.hm.read().unwrap();
         
         if lock.contains_key(key) {
-            let r = RwLockReadGuardRef::new(lock);
-
-            let x = r.map(|m| m.find(key).unwrap());
+            let guard_ref = RwLockReadGuardRef::new(lock);
         
-            return Some(x);
+            return Some(guard_ref.map(|hm| hm.find(key).unwrap()));
         } else {
             return None;
         }
