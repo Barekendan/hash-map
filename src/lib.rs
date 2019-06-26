@@ -3,9 +3,46 @@ pub mod hash_map;
 
 pub use self::hash_map::HashMap;
 
+extern crate owning_ref;
+
 #[cfg(test)]
 mod tests {
     use super::hash_map::*;
+    use std::sync::Arc;
+    use std::thread;
+
+    #[test]
+    fn spam_insert() {
+        let m = Arc::new(TsHashMap::new());
+        let mut joins = Vec::new();
+
+        for t in 0..10 {
+            let m = m.clone();
+            joins.push(thread::spawn(move || {
+                for i in t * 1000..(t + 1) * 1000 {
+                    assert!(m.insert(i, !i).is_none());
+                    assert_eq!(m.insert(i, i).unwrap(), !i);
+                }
+            }));
+        }
+
+        for j in joins.drain(..) {
+            j.join().unwrap();
+        }
+
+        for t in 0..5 {
+            let m = m.clone();
+            joins.push(thread::spawn(move || {
+                for i in t * 2000..(t + 1) * 2000 {
+                    assert_eq!(*m.find(i).unwrap(), i);
+                }
+            }));
+        }
+
+        for j in joins {
+            j.join().unwrap();
+        }
+    }
 
     #[test]
     fn test_create() {
@@ -94,5 +131,14 @@ mod tests {
         assert!(hm.remove(1).is_none());
 
         assert_eq!(*hm.find(2).unwrap(), 22);
+    }
+
+    #[test]
+    fn test_capacity_overflow() {
+        let mut hm = HashMap::with_capacity(std::u32::MAX as usize/256);
+
+        for i in 0..std::u32::MAX/128 {
+            hm.insert(i as i32, i).unwrap();
+        }   
     }
 }

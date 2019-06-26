@@ -1,7 +1,10 @@
 use std::{
     alloc::{self, Layout},
+    sync::RwLock,
     mem
 };
+
+use owning_ref::*;
 
 /// An error that may be due to insertion of duplicate key.
 #[derive(Debug)]
@@ -10,14 +13,48 @@ pub struct DupErr {
 }
 
 #[derive(Clone, Debug)]
-struct Item<V: Eq + Clone> {
+struct Item<V> {
     key: i32,
     value: V,
     state: CellState
 }
 
+/// Thread-safe HashMap.
+/// A wrapper over the `HashMap<V>`
+pub struct TsHashMap<V> {
+    hm: RwLock<HashMap<V>>
+}
+
+impl<V: Eq + Clone> TsHashMap<V> {
+    pub fn new() -> TsHashMap<V> {
+        TsHashMap{
+            hm: RwLock::new(HashMap::with_capacity(10))
+        }
+    }
+
+    pub fn insert(&self, key: i32, value: V) -> Option<V> {
+        let mut map = self.hm.write().unwrap();
+
+        map.put(key, value)
+    }
+
+    pub fn find<'ret, 'me: 'ret>(&'me self, key: i32) -> Option<RwLockReadGuardRef<'ret, HashMap<V>, V>> {
+        let lock = self.hm.read().unwrap();
+        
+        if lock.contains_key(key) {
+            let r = RwLockReadGuardRef::new(lock);
+
+            let x = r.map(|m| m.find(key).unwrap());
+        
+            return Some(x);
+        } else {
+            return None;
+        }
+    }
+}
+
 /// A hash map implemented with linear probing.
-pub struct HashMap<V: Eq + Clone> {
+pub struct HashMap<V> {
     ht: Vec<Item<V>>,
     count: usize
 }
@@ -29,7 +66,7 @@ enum CellState {
     Deleted
 }
 
-impl<V: Eq + Clone> HashMap<V> {
+impl<V> HashMap<V> {
     /// Creates an empty `HashMap`.
     /// 
     /// # Examples
@@ -255,7 +292,7 @@ impl<V: Eq + Clone> HashMap<V> {
     }
 } 
 
-fn init_table<V: Eq + Clone>(capacity: usize) -> Vec<Item<V>> {
+fn init_table<V>(capacity: usize) -> Vec<Item<V>> {
     
     let align = mem::align_of::<Item<V>>();
     let elem_size = mem::size_of::<Item<V>>();
