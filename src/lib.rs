@@ -2,6 +2,7 @@
 pub mod hash_map;
 
 pub use self::hash_map::HashMap;
+pub use self::hash_map::TsHashMap;
 
 extern crate owning_ref;
 
