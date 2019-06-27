@@ -26,24 +26,75 @@ pub struct TsHashMap<V> {
 }
 
 impl<V: Eq + Clone> TsHashMap<V> {
+    /// Creates an empty `TsHashMap`.
+    /// 
+    /// # Examples
+    ///
+    /// ```
+    /// use mk_collections::TsHashMap;
+    ///
+    /// let map = TsHashMap::<i32>::new();
+    /// assert_eq!(map.capacity(), 0);
+    /// ```
     pub fn new() -> TsHashMap<V> {
         TsHashMap{
             hm: RwLock::new(HashMap::new())
         }
     }
 
+    /// Creates an empty `TsHashMap` with the specified capacity.
+    /// 
+    /// # Examples
+    ///
+    /// ```
+    /// use mk_collections::TsHashMap;
+    ///
+    /// let map = TsHashMap::<i32>::with_capacity(10);
+    /// assert_eq!(map.capacity(), 10);
+    /// ```
     pub fn with_capacity(capacity: usize) -> TsHashMap<V> {
         TsHashMap {
             hm: RwLock::new(HashMap::with_capacity(capacity))
         }
     }
 
+    /// Gets capacity 
+    pub fn capacity(&self) -> usize {
+        let lock = self.hm.read().unwrap();
+
+        lock.capacity()
+    }
+
+    /// Inserts the new key-value pair if it's not or updates the value if key is aloredy present in the map.
+    /// If it updates the old value will be returned, otherwise - [`None`].
+    /// 
+    /// # Examples
+    ///
+    /// ```
+    /// use mk_collections::TsHashMap;
+    ///
+    /// let mut map = TsHashMap::new();
+    /// assert!(map.insert(3, "a").is_none());
+    /// assert_eq!(map.insert(3, "b").unwrap(), "a");
+    /// ```
     pub fn insert(&self, key: i32, value: V) -> Option<V> {
         let mut map = self.hm.write().unwrap();
 
         map.insert(key, value)
     }
 
+    /// Returns a reference to the value corresponding to the key, or [`None`] if it didn't found in the map.
+    /// 
+    /// # Examples
+    ///
+    /// ```
+    /// use mk_collections::TsHashMap;
+    ///
+    /// let mut map = TsHashMap::new();
+    /// assert!(map.insert(3, "a").is_none());
+    /// assert_eq!(*map.find(3).unwrap(), "a");
+    /// assert!(map.find(4).is_none());
+    /// ```
     pub fn find<'ret, 'me: 'ret>(&'me self, key: i32) -> Option<RwLockReadGuardRef<'ret, HashMap<V>, V>> {
         let lock = self.hm.read().unwrap();
         
@@ -56,6 +107,20 @@ impl<V: Eq + Clone> TsHashMap<V> {
         }
     }
 
+    /// Removes a key from the map, returning the value at the key if the key
+    /// was previously in the map.
+    /// 
+    /// # Examples
+    ///
+    /// ```
+    /// use mk_collections::TsHashMap;
+    ///
+    /// let mut map = TsHashMap::new();
+    /// assert!(map.insert(3, "a").is_none());
+    /// 
+    /// map.remove(3);
+    /// assert!(map.find(3).is_none());
+    /// ```
     pub fn remove(&self, key: i32) {
         let mut write_lock = self.hm.write().unwrap();
         
