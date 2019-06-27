@@ -121,7 +121,7 @@ impl<V> HashMap<V> {
     /// use mk_collections::HashMap;
     ///
     /// let mut map = HashMap::new();
-    /// assert!(map.insert(3, "a").is_ok());
+    /// assert!(map.insert_new(3, "a").is_ok());
     /// assert_eq!(*map.find(3).unwrap(), "a");
     /// assert!(map.find(4).is_none());
     /// ```
@@ -144,7 +144,7 @@ impl<V> HashMap<V> {
     /// use mk_collections::HashMap;
     ///
     /// let mut map = HashMap::new();
-    /// assert!(map.insert(3, "a").is_ok());
+    /// assert!(map.insert_new(3, "a").is_ok());
     /// assert_eq!(*map.find(3).unwrap(), "a");
     /// ```
     pub fn insert_new(&mut self, key: i32, value: V) -> Result<(), DupErr> {
@@ -167,8 +167,8 @@ impl<V> HashMap<V> {
     /// use mk_collections::HashMap;
     ///
     /// let mut map = HashMap::new();
-    /// assert!(map.insert(3, "a").is_ok());
-    /// assert!(map.insert(5, "a").is_ok());
+    /// assert!(map.insert(3, "a").is_none());
+    /// assert!(map.insert(5, "a").is_none());
     /// 
     /// assert!(map.contains_key(3));
     /// assert!(map.contains_key(5));
@@ -186,8 +186,8 @@ impl<V> HashMap<V> {
     /// use mk_collections::HashMap;
     ///
     /// let mut map = HashMap::new();
-    /// assert!(map.insert(3, "a").is_ok());
-    /// assert_eq!(map.put(3, "b").unwrap(), "a");
+    /// assert!(map.insert(3, "a").is_none());
+    /// assert_eq!(map.insert(3, "b").unwrap(), "a");
     /// ```
     pub fn insert(&mut self, key: i32, value: V) -> Option<V> {
         if let Some(index) = self.find_index(key) {
@@ -207,7 +207,7 @@ impl<V> HashMap<V> {
     /// use mk_collections::HashMap;
     ///
     /// let mut map = HashMap::new();
-    /// assert!(map.insert(3, "a").is_ok());
+    /// assert!(map.insert(3, "a").is_none());
     /// 
     /// assert_eq!(*map.remove(3).unwrap(), "a");
     /// assert!(map.remove(3).is_none());
