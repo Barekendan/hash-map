@@ -41,7 +41,7 @@ impl<V: Eq + Clone> TsHashMap<V> {
     pub fn insert(&self, key: i32, value: V) -> Option<V> {
         let mut map = self.hm.write().unwrap();
 
-        map.put(key, value)
+        map.insert(key, value)
     }
 
     pub fn find<'ret, 'me: 'ret>(&'me self, key: i32) -> Option<RwLockReadGuardRef<'ret, HashMap<V>, V>> {
@@ -59,7 +59,7 @@ impl<V: Eq + Clone> TsHashMap<V> {
     pub fn remove(&self, key: i32) {
         let mut write_lock = self.hm.write().unwrap();
         
-        let res = write_lock.remove(key);
+        write_lock.remove(key);
     }
 }
 
@@ -133,7 +133,7 @@ impl<V> HashMap<V> {
         }
     }
 
-    /// Inserts a key-value pair into the map.
+    /// Inserts a new key-value pair into the map.
     /// 
     /// If the map already have the key present, it returns error result `DupErr`.
     /// To modify the value of already present key use the put method.
@@ -147,7 +147,7 @@ impl<V> HashMap<V> {
     /// assert!(map.insert(3, "a").is_ok());
     /// assert_eq!(*map.find(3).unwrap(), "a");
     /// ```
-    pub fn insert(&mut self, key: i32, value: V) -> Result<(), DupErr> {
+    pub fn insert_new(&mut self, key: i32, value: V) -> Result<(), DupErr> {
         if self.count == self.ht.capacity() {
             self.resize();
         }
@@ -177,7 +177,7 @@ impl<V> HashMap<V> {
         self.find_index(key).is_some()
     }
 
-    /// Updates the value if key is present in the map or inserts the new key-value pair if it's not.
+    /// Inserts the new key-value pair if it's not or updates the value if key is aloredy present in the map.
     /// If it updates the old value will be returned, otherwise - [`None`].
     /// 
     /// # Examples
@@ -189,11 +189,11 @@ impl<V> HashMap<V> {
     /// assert!(map.insert(3, "a").is_ok());
     /// assert_eq!(map.put(3, "b").unwrap(), "a");
     /// ```
-    pub fn put(&mut self, key: i32, value: V) -> Option<V> {
+    pub fn insert(&mut self, key: i32, value: V) -> Option<V> {
         if let Some(index) = self.find_index(key) {
             Some(mem::replace(&mut self.ht[index].value, value))
         } else {
-            self.insert(key, value).expect("cannot insert key-value pair");
+            self.insert_new(key, value).expect("cannot insert key-value pair");
             None
         }
     }

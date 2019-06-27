@@ -57,9 +57,9 @@ mod tests {
     fn test_resize() {
         let mut hm = HashMap::with_capacity(2);
         assert_eq!(hm.capacity(), 2);
-        hm.insert(1, 11).unwrap();
-        hm.insert(2, 22).unwrap();
-        hm.insert(3, 33).unwrap();
+        hm.insert(1, 11);
+        hm.insert(2, 22);
+        hm.insert(3, 33);
         assert_eq!(hm.capacity(), 4);
     }
 
@@ -67,7 +67,7 @@ mod tests {
     fn test_insert_find() {
         let mut hm = HashMap::new();
 
-        hm.insert(33, "value: V").unwrap();
+        assert!(hm.insert(33, "value: V").is_none());
 
         let value = hm.find(33).unwrap();
         assert_eq!(*value, "value: V");
@@ -79,7 +79,7 @@ mod tests {
     fn test_contains_key() {
         let mut hm = HashMap::new();
 
-        hm.insert(33, "value: V").unwrap();
+        assert!(hm.insert(33, "value: V").is_none());
 
         assert!(hm.contains_key(33));
         assert!(!hm.contains_key(22));
@@ -88,31 +88,31 @@ mod tests {
     #[test]
     fn test_insert_duplicate() {
         let mut hm = HashMap::with_capacity(2);
-        hm.insert(4, 14).unwrap();
-        hm.insert(1, 11).unwrap();
-        hm.insert(2, 12).unwrap();
-        hm.insert(3, 13).unwrap();
+        hm.insert(4, 14);
+        hm.insert(1, 11);
+        hm.insert(2, 12);
+        hm.insert(3, 13);
         
-        assert!(hm.insert(4, 4).is_err());
-        assert!(hm.insert(3, 3).is_err());
-        assert!(hm.insert(2, 2).is_err());
+        assert!(hm.insert_new(4, 4).is_err());
+        assert!(hm.insert_new(3, 3).is_err());
+        assert!(hm.insert_new(2, 2).is_err());
     }
 
     #[test]
-    fn test_put() {
+    fn test_insert() {
         let mut hm = HashMap::with_capacity(2);
 
-        hm.insert(3, 13).unwrap();
-        hm.insert(0, 10).unwrap();
+        assert!(hm.insert(3, 13).is_none());
+        assert!(hm.insert(0, 10).is_none());
 
-        let old = hm.put(3, 33).unwrap();
-        assert_eq!(old, 13);
+        let old = hm.insert(3, 33);
+        assert_eq!(old, Some(13));
 
-        hm.insert(1, 11).unwrap();
-        hm.insert(2, 12).unwrap();
-        hm.insert(4, 14).unwrap();
+        assert!(hm.insert(1, 11).is_none());
+        assert!(hm.insert(2, 12).is_none());
+        assert!(hm.insert(4, 14).is_none());
 
-        hm.put(2, 22);        
+        hm.insert(2, 22);        
 
         assert_eq!(*hm.find(3).unwrap(), 33);
         assert_eq!(*hm.find(2).unwrap(), 22);
@@ -122,8 +122,8 @@ mod tests {
     fn test_remove() {
         let mut hm = HashMap::with_capacity(2);
 
-        hm.insert(1, 11).unwrap();
-        hm.insert(2, 22).unwrap();
+        assert!(hm.insert(1, 11).is_none());
+        assert!(hm.insert(2, 22).is_none());
 
         let removed = hm.remove(1).unwrap();
         assert_eq!(*removed, 11);
@@ -138,7 +138,7 @@ mod tests {
         let mut hm = HashMap::with_capacity(std::u32::MAX as usize/256);
 
         for i in 0..std::u32::MAX/128 {
-            hm.insert(i as i32, i).unwrap();
+            assert!(hm.insert(i as i32, i).is_none());
         }   
     }
 }
