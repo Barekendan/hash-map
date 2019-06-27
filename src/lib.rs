@@ -132,13 +132,4 @@ mod tests {
 
         assert_eq!(*hm.find(2).unwrap(), 22);
     }
-
-    #[test]
-    fn test_capacity_overflow() {
-        let mut hm = HashMap::with_capacity(std::u32::MAX as usize/256);
-
-        for i in 0..std::u32::MAX/128 {
-            assert!(hm.insert(i as i32, i).is_none());
-        }   
-    }
 }
