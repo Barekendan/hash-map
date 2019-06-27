@@ -55,6 +55,12 @@ impl<V: Eq + Clone> TsHashMap<V> {
             return None;
         }
     }
+
+    pub fn remove(&self, key: i32) {
+        let mut write_lock = self.hm.write().unwrap();
+        
+        let res = write_lock.remove(key);
+    }
 }
 
 /// A hash map implemented with linear probing.
