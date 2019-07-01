@@ -46,6 +46,38 @@ mod tests {
     }
 
     #[test]
+    fn spam_insert_remove() {
+        let m = Arc::new(TsHashMap::new());
+        let mut joins = Vec::new();
+
+        for t in 0..10 {
+            let m = m.clone();
+            joins.push(thread::spawn(move || {
+                for i in t * 1000..(t + 1) * 1000 {
+                    assert!(m.insert(i, !i).is_none());
+                }
+            }));
+        }
+
+        for j in joins.drain(..) {
+            j.join().unwrap();
+        }
+
+        for t in 0..5 {
+            let m = m.clone();
+            joins.push(thread::spawn(move || {
+                for i in t * 2000..(t + 1) * 2000 {
+                    assert_eq!(*m.remove(i).unwrap(), !i);
+                }
+            }));
+        }
+
+        for j in joins {
+            j.join().unwrap();
+        }
+    }
+
+    #[test]
     fn test_create() {
         let hm = HashMap::<&str>::new();
         assert_eq!(hm.capacity(), 0);

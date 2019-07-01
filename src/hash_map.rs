@@ -121,10 +121,16 @@ impl<V: Eq + Clone> TsHashMap<V> {
     /// map.remove(3);
     /// assert!(map.find(3).is_none());
     /// ```
-    pub fn remove(&self, key: i32) {
-        let mut write_lock = self.hm.write().unwrap();
-        
-        write_lock.remove(key);
+    pub fn remove<'ret, 'me: 'ret>(&'me self, key: i32) -> Option<RwLockWriteGuardRef<'ret, HashMap<V>, V>> {
+        let write_lock = self.hm.write().unwrap();
+
+        if write_lock.contains_key(key) {
+            let guard_ref = RwLockWriteGuardRefMut::new(write_lock);
+
+            return Some(guard_ref.map(|hm| hm.remove(key).unwrap()));
+        }
+
+        None
     }
 }
 
